@@ -3,11 +3,11 @@ import Button from "../components/button/buttonMain";
 import bhk1 from '../assets/gallery/interior1.jpg';
 import bhk2 from '../assets/gallery/4.webp';
 
-import bhk7 from '../assets/pricing/1BHK.png';
-import bhk8 from '../assets/pricing/2BHK.png';
-import bhk9 from '../assets/pricing/3BHK.png';
-import bhk10 from '../assets/pricing/3BHK+2T.png';
-import bhk11 from '../assets/pricing/4BHK.png';
+import bhk7 from '../assets/pricing/1bhk.png';
+import bhk8 from '../assets/pricing/2bhk.png';
+import bhk9 from '../assets/pricing/3bhk.png';
+import bhk10 from '../assets/pricing/3bhk+2t.png';
+import bhk11 from '../assets/pricing/4bhk.png';
 
 import { useLeadTracking, LEAD_SOURCES, PROPERTY_TYPES } from '../hooks/useLeadTracking';
 
