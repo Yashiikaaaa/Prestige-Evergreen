@@ -1,96 +1,172 @@
 import { useCallback } from "react";
 import ReactGA from "react-ga4";
 
-export const useLeadTracking = () => {
-  const normalize = (str) =>
-    (str || "")
-      .toLowerCase()
-      .replace(/[_\s]+/g, "_")
-      .trim();
+// ----------------------------------
+// UTM utility
+// ----------------------------------
+const getUTMParams = () => {
+  if (typeof window === "undefined") return {};
+  const urlParams = new URLSearchParams(window.location.search);
 
-  const getUTMParams = () => {
-    if (typeof window === "undefined") return {};
-    const params = new URLSearchParams(window.location.search);
-    return {
-      utm_source: params.get("utm_source") || undefined,
-      utm_medium: params.get("utm_medium") || undefined,
-      utm_campaign: params.get("utm_campaign") || undefined,
-      utm_term: params.get("utm_term") || undefined,
-      utm_content: params.get("utm_content") || undefined,
-    };
+  const getParam = (keys) => {
+    for (const key of keys) {
+      const val = urlParams.get(key);
+      if (val) return val;
+    }
+    return null;
   };
 
-  const trackButtonClick = useCallback((source, action, propertyType = null) => {
-    let eventAction = normalize(action);
-    let eventLabel = normalize(source);
+  return {
+    utm_source: getParam(["utm_source", "utmSource"]),
+    utm_medium: getParam(["utm_medium", "utmMedium"]),
+    utm_campaign: getParam(["utm_campaign", "utmCampaign"]),
+    utm_keyword: getParam(["utm_keyword", "utmKeyword"]),
+    utm_term: getParam(["utm_term", "utmTerm"]),
+    utm_content: getParam(["utm_content", "utmContent"]),
+  };
+};
 
-    if (eventAction.includes("pricing") && propertyType) {
-      eventAction = `${eventAction}_${normalize(propertyType)}`;
-      if (!eventLabel.includes(normalize(propertyType))) {
-        eventLabel = `${eventLabel}_${normalize(propertyType)}`;
-      }
-    } else if (eventAction.includes("enquire_now") && source) {
-      eventAction = `${eventAction}_${normalize(source)}`;
-    }
+// ----------------------------------
+// String normalizer helper
+// ----------------------------------
+const normalize = (str) => {
+  return (str || "")
+    .toLowerCase()
+    .replace(/[_\s]+/g, "_")
+    .trim();
+};
 
-    eventAction = eventAction.replace(/(_pricing)+/g, "_pricing");
-    eventLabel = eventLabel.replace(/(_pricing)+/g, "_pricing");
+// ----------------------------------
+// Unified hook (fires both general + specific events)
+// ----------------------------------
+export const useLeadTracking = () => {
+  const utmParams = getUTMParams();
 
-    ReactGA.event(eventAction, {
-      event_category: "Button Click",
-      event_label: eventLabel,
-      lead_source: source,
-      property_type: propertyType,
-      funnel_stage: "interest",
-      ...getUTMParams(), // ← add utm parameters
-    });
-  }, []);
+  // 🔹 General Event
+  const trackGeneralEvent = useCallback(
+    (action, category, label, extra = {}) => {
+      ReactGA.event({
+        action,
+        category,
+        label,
+        ...utmParams,
+        ...extra,
+      });
+    },
+    [utmParams]
+  );
 
-  const trackFormSubmission = useCallback((source, formType, propertyType = null) => {
-    let eventAction;
+  // 🔹 Specific Event
+  const trackSpecificEvent = useCallback(
+    (action, category, label, extra = {}) => {
+      ReactGA.event({
+        action,
+        category,
+        label,
+        ...utmParams,
+        ...extra,
+      });
+    },
+    [utmParams]
+  );
 
-    if (propertyType) {
-      eventAction = `${normalize(formType)}_submit_${normalize(propertyType)}`;
-    } else if (source) {
-      eventAction = `${normalize(formType)}_submit_${normalize(source)}`;
-    } else {
-      eventAction = `${normalize(formType)}_submit`;
-    }
+  // ----------------------------------
+  // BUTTON CLICKS
+  // ----------------------------------
+  const trackButtonClick = useCallback(
+    (source, action, propertyType = null) => {
+      const normalizedSource = normalize(source);
+      const normalizedAction = normalize(action);
+      const label = `${source}${propertyType ? ` - ${propertyType}` : ""}`;
 
-    ReactGA.event(eventAction, {
-      event_category: "Form Submission",
-      event_label: `${source}${propertyType ? ` - ${propertyType}` : ""}`,
-      lead_source: source,
-      property_type: propertyType,
-      funnel_stage:
-        formType === "contact_form" ? "lead" : "site_visit_request",
-      ...getUTMParams(), // ← add utm parameters
-    });
-  }, []);
+      // 1️⃣ General event
+      trackGeneralEvent(normalizedAction, "Button Click", label, {
+        lead_source: source,
+        property_type: propertyType,
+        funnel_stage: "interest",
+      });
 
-  const trackFormOpen = useCallback((source, formType, propertyType = null) => {
-    let eventAction;
+      // 2️⃣ Specific event
+      trackSpecificEvent(
+        `${normalizedSource}_${normalizedAction}`,
+        "Button Click - Specific",
+        label,
+        {
+          lead_source: source,
+          property_type: propertyType,
+          funnel_stage: "interest",
+        }
+      );
+    },
+    [trackGeneralEvent, trackSpecificEvent]
+  );
 
-    if (propertyType) {
-      eventAction = `${normalize(formType)}_opened_${normalize(propertyType)}`;
-    } else if (source) {
-      eventAction = `${normalize(formType)}_opened_${normalize(source)}`;
-    } else {
-      eventAction = `${normalize(formType)}_opened`;
-    }
+  // ----------------------------------
+  // FORM SUBMISSIONS
+  // ----------------------------------
+  const trackFormSubmission = useCallback(
+    (source, formType, propertyType = null) => {
+      const normalizedSource = normalize(source);
+      const normalizedForm = normalize(formType);
+      const label = `${source}${propertyType ? ` - ${propertyType}` : ""}`;
 
-    ReactGA.event(eventAction, {
-      event_category: "Form Interaction",
-      event_label:
-        propertyType && !normalize(source).includes(normalize(propertyType))
+      // 1️⃣ General event
+      trackGeneralEvent(`${normalizedForm}_submit`, "Form Submission", label, {
+        lead_source: source,
+        property_type: propertyType,
+        funnel_stage:
+          formType === "contact_form" ? "lead" : "site_visit_request",
+      });
+
+      // 2️⃣ Specific event
+      trackSpecificEvent(
+        `${normalizedSource}_${normalizedForm}_submit`,
+        "Form Submission - Specific",
+        label,
+        {
+          lead_source: source,
+          property_type: propertyType,
+          funnel_stage:
+            formType === "contact_form" ? "lead" : "site_visit_request",
+        }
+      );
+    },
+    [trackGeneralEvent, trackSpecificEvent]
+  );
+
+  // ----------------------------------
+  // FORM OPENS
+  // ----------------------------------
+  const trackFormOpen = useCallback(
+    (source, formType, propertyType = null) => {
+      const normalizedSource = normalize(source);
+      const normalizedForm = normalize(formType);
+      const label =
+        propertyType && !normalizedSource.includes(normalize(propertyType))
           ? `${source} - ${propertyType}`
-          : source,
-      lead_source: source,
-      property_type: propertyType,
-      funnel_stage: "consideration",
-      ...getUTMParams(), // ← add utm parameters
-    });
-  }, []);
+          : source;
+
+      // 1️⃣ General event
+      trackGeneralEvent(`${normalizedForm}_opened`, "Form Interaction", label, {
+        lead_source: source,
+        property_type: propertyType,
+        funnel_stage: "consideration",
+      });
+
+      // 2️⃣ Specific event
+      trackSpecificEvent(
+        `${normalizedSource}_${normalizedForm}_opened`,
+        "Form Interaction - Specific",
+        label,
+        {
+          lead_source: source,
+          property_type: propertyType,
+          funnel_stage: "consideration",
+        }
+      );
+    },
+    [trackGeneralEvent, trackSpecificEvent]
+  );
 
   return {
     trackButtonClick,
@@ -99,26 +175,29 @@ export const useLeadTracking = () => {
   };
 };
 
-// Lead source constants
+// ----------------------------------
+// Constants
+// ----------------------------------
 export const LEAD_SOURCES = {
   HERO: "hero_banner",
   OVERVIEW: "overview_section",
-  PRICING_1200sqft: "pricing_1200sqft",
-  PRICING_1500sqft: "pricing_1500sqft",
-  PRICING_2000sqft: "pricing_2000sqft",
-  PRICING_2400sqft: "pricing_2400sqft",
-  PRICING_4000sqft: "pricing_4000sqft",
+  PRICING_1BHK: "pricing_1BHK",
+  PRICING_2BHK: "pricing_2BHK",
+  PRICING_3BHK2T: "pricing_3BHK2T",
+  PRICING_3BHK3T: "pricing_3BHK3T",
+  PRICING_4BHK: "pricing_4BHK",
+  PRICING_4BHKSTUDY: "pricing_4BHKstudy",
   MASTER_PLAN: "master_plan_section",
   FOOTER: "footer_section",
   CONTACT_FORM_LINK: "contact_form_internal_link",
   UNKNOWN: "unknown_source",
 };
 
-// Property types
 export const PROPERTY_TYPES = {
-  sqft1200: "1200sqft",
-  sqft1500: "1500sqft",
- sqft2000: "2000sqft",
- sqft2400:"2400sqft",
- sqft4000:"4000sqft",
+  BHK1: "1BHK",
+  BHK2: "2BHK",
+  BHK32T: "3BHK2T",
+  BHK33T: "3BHK3T",
+  BHK4: "4BHK",
+  BHK4STUDY: "4BHKstudy",
 };
