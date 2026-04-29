@@ -23,6 +23,7 @@ const getUTMParams = () => {
     utm_keyword: getParam(["utm_keyword", "utmKeyword"]),
     utm_term: getParam(["utm_term", "utmTerm"]),
     utm_content: getParam(["utm_content", "utmContent"]),
+      gclid: getParam(["gclid"]),
   };
 };
 

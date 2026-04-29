@@ -24,7 +24,6 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
   const [utmParams, setUtmParams] = useState({});
   const [isMobile, setIsMobile] = useState(false);
 
-  // ✅ validate form memoized state
   const isFormValid = useMemo(() => {
     if (!name || !number) return false;
 
@@ -36,7 +35,6 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
     return true;
   }, [name, number]);
 
-  // ✅ safely check window resize after mount
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -49,7 +47,6 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
     };
   }, []);
 
-  // ✅ safely extract UTM params
   function getUTMParams() {
     if (typeof window === "undefined") return {};
     const params = new URLSearchParams(window.location.search);
@@ -58,6 +55,7 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
       utmMedium: params.get("utmMedium") || "",
       utmCampaign: params.get("utmCampaign") || "",
       utmKeyword: params.get("utmKeyword") || "",
+      gclid: params.get("gclid") || "",
     };
   }
 
@@ -65,7 +63,6 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
     setUtmParams(getUTMParams());
   }, []);
 
-  // ✅ fixed validateForm
   const validateForm = () => {
     if (!name || !number) {
       setAlert(
@@ -134,6 +131,7 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
         medium: utmParams.utmMedium || null,
         campaign: utmParams.utmCampaign || null,
         keyword: utmParams.utmKeyword || null,
+        gclid: utmParams.gclid || null,
       },
     };
 
@@ -151,11 +149,14 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
-      console.log("Success:", result);
+    const result = await response.json();
+console.log("Success:", result);
 
-      setName("");
-      setNumber("");
+// ✅ GA4 event (reliable)
+window.gtag("event", "Contact_form_submit");
+
+setName("");
+setNumber("");
 
       setAlert(
         <FormAlert
@@ -230,7 +231,9 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
                 <button
                   onClick={handleSubmit}
                   className={`text-white my-5 p-2 w-full ${
-                    loading || !isFormValid ? "bg-gray-400 cursor-not-allowed" : "bg-PrestigeBrown"
+                    loading || !isFormValid
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-PrestigeBrown"
                   }`}
                   disabled={loading || !isFormValid}
                 >
@@ -239,13 +242,13 @@ const ContactForm = ({ contactmodal, setContactModal, leadSource }) => {
               </div>
               <div className="flex w-full items-center justify-center gap-[10px]">
                 <div className="h-[2px] w-[86px] bg-[#D9D9D9]" />
-                <span className="font-sans font-normal text-[18px] leading-[24px] text-[#7E7E7E]">
+                <span className="font-sans text-[18px] text-[#7E7E7E]">
                   Or
                 </span>
                 <div className="h-[2px] w-[86px] bg-[#D9D9D9]" />
               </div>
               <div className="mx-auto max-w-sm w-full">
-                <button className="text-white my-5 p-2 w-full bg-PrestigeBrown flex items-center justify-center hover:bg-opacity-90 transition">
+                <button className="text-white my-5 p-2 w-full bg-PrestigeBrown flex items-center justify-center">
                   <a href="tel:+919353329893" className="flex items-center">
                     <Phone className="w-5 h-5 mr-2" />
                     93533 29893

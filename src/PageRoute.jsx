@@ -79,13 +79,15 @@ export const PageRoute = () => {
     const medium = params.get("utmMedium");
     const campaign = params.get("utmCampaign");
     const keyword = params.get("utmKeyword");
+    const gclid = params.get("gclid");
 
     ReactGA.send({
       hitType: "pageview",
       utmSource: source,
       utmMedium: medium,
       utmCampaign: campaign,
-      utmKeyowrd: keyword,
+      utmKeyword: keyword,
+      gclid: gclid,
     });
   }, []);
 
